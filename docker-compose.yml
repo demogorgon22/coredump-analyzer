@@ -1,0 +1,18 @@
+version: '2.0'
+
+services:
+        coredumpview:
+                build: 
+                        context: .
+                environment:
+                        SSH_PASS: "coremanpass"
+                cap_add:
+                        - SYS_PTRACE 
+                security_opt:
+                        - seccomp:unconfined
+                volumes:
+                        - /mnt/cores:/cores
+                tty: true
+                stdin_open: true
+                ports:
+                - "2222:2222"

@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coredumpview
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coredumpview
+  template:
+    metadata:
+      labels:
+        app: coredumpview
+    spec:
+      volumes:
+        - name: nfs-volume
+          nfs:
+            server: k3smaster
+            path: /data/cores
+      containers:
+        - name: coredumpview
+          image: coredumpview #change this to actual image name
+          tty: true
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+            allowPrivilegeEscalation: true
+            capabilities:
+              add:
+                - ALL
+          volumeMounts:
+            - name: nfs-volume
+              mountPath: /cores
+          ports:
+            - name: ssh-port
+              containerPort: 2222
+          env:
+            - name: SSH_PASS
+              value: 'coremanpass'
+            - name: GAME
+              value: 'dnethack'

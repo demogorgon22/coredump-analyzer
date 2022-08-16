@@ -1,0 +1,15 @@
+{
+  "name": "coredumpview",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pkg index.js -t node14-alpine-arm64 -o coredumpview"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "neo-blessed": "^0.2.0"
+  }
+}
