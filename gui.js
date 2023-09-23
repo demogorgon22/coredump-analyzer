@@ -1,9 +1,11 @@
 const blessed = require('neo-blessed');
 const fileWorker = require('./fileWorker');
 
+let screen;
 
-const init = async (cores)=>{
-	const screen = blessed.screen({
+
+const init = async ()=>{
+	screen = blessed.screen({
 		smartCSR: true,
 		mouse:false
 	});
@@ -17,7 +19,6 @@ const init = async (cores)=>{
 		width: '100%',
 		height: '100%',
 		scrollable:true,
-		content: 'Core Dump Viewer',
 		mouse:false,
 		border: {
 			type: 'line'
@@ -34,9 +35,63 @@ const init = async (cores)=>{
 			}
 		}
 	});
+	const versionList = initVersionList(box);
+	screen.append(box);
+	screen.key(['q', 'C-c'], async function(ch, key) {
+		await fileWorker.exit();
+		return process.exit(0);
+	});
+	versionList.focus();
+	screen.render();
+
+}
+
+const initVersionList = box=>{
+	const versions = fileWorker.getVersions();
+	const versionList = blessed.list({
+		parent:box,
+		top: "1%",
+		left: "1%",
+		width: '97%',
+		height: '97%',
+		scrollable:true,
+		interactive:true,
+		keys:true,
+		vi:true,
+		content: 'Core Dump Viewer',
+		items: versions.map(version=>version.directoryName + ` | (${version.coreCount} core${version.coreCount!==1?'s':''})` ),
+		border: {
+			type: 'line'
+		},
+		style: {
+			selected:{
+				fg:'green',
+				bg:'black'
+			},
+			fg: 'white',
+			bg: 'black',
+			border: {
+				fg: '#f0f0f0'
+			}
+		}
+	});
+	versionList.on('select',item=>{
+		const versionData = versions.find(version=>version.directoryName === item.content.split('|')[0].trim());
+		//box.remove(versionList);
+		const coreList = initCoreList(box, versionData);
+		versionList.detach();
+		versionList.destroy();
+		screen.render();
+		coreList.focus();
+	});
+	return versionList;
+}
+
+const initCoreList = (box, version)=>{
+	const cores = fileWorker.getCoreData(version);
 	const infoBox = blessed.box({
 		parent:box,
-		top: '2%',
+		top: '3%',
 		left: 0,
 		width: '98%',
 		height: '70%',
@@ -121,7 +176,7 @@ const init = async (cores)=>{
 			if(submission){
 				const toRename = coreList.getItem(coreList.selected).content
 				cores.find(cores=>cores.core===toRename).core = submission;
-				fileWorker.renameCore(toRename,submission);
+				fileWorker.renameCore(toRename, version, submission);
 				coreList.setItem(coreList.selected,submission);
 			}
 			input.detach();
@@ -138,13 +193,13 @@ const init = async (cores)=>{
 		if(target === choppingBlock){
 			coreList.removeItem(coreList.selected);
 			screen.render();
-			fileWorker.deleteCore(target);
+			fileWorker.deleteCore(target, version);
 		} else
 			choppingBlock = target;
 	});
 	coreList.key('v',async ()=>{
 		const target = coreList.getItem(coreList.selected).content
-		screen.spawn('/app/gdblaunch.sh',fileWorker.getGdbArgs(target),{cwd:'/cores/dnh'});
+		screen.spawn('/app/gdblaunch.sh',fileWorker.getGdbArgs(target,version),{cwd:`/cores/${version.directoryName}/dnh`});
 		//screen.render();
 		/*infoBox.setContent('');
 		if(gdb){
@@ -161,14 +216,8 @@ const init = async (cores)=>{
 			args: fileWorker.getGdbArgs(target)
 		});*/
 	});
-	screen.append(box);
-	screen.key(['q', 'C-c'], async function(ch, key) {
-		await fileWorker.exit();
-		return process.exit(0);
-	});
-	coreList.focus();
-	screen.render();
-
+	//coreList.focus();
+	return coreList;
 }
 module.exports = {
 	init
